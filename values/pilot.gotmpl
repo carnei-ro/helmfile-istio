@@ -1,5 +1,5 @@
 resources:
-{{- range $_, $file := ( exec "bash" (list "-c" "echo -n istio-manifests/*") | splitList " " ) }}
+{{- range $_, $file := ( exec "bash" (list "-c" "echo -n istio-manifests-pilot/*") | splitList " " ) }}
 {{ $fileContent := readFile $file  | fromYaml }}
 {{ if ne "CustomResourceDefinition" $fileContent.kind -}}
   -

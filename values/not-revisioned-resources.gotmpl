@@ -1,0 +1,8 @@
+resources:
+{{- range $_, $file := ( exec "bash" (list "-c" "echo -n istio-manifests-not-revisioned-resources/*") | splitList " " ) }}
+{{ $fileContent := readFile $file  | fromYaml }}
+{{ if and (not (hasKey $fileContent.metadata.labels "istio.io/rev")) (ne "CustomResourceDefinition" $fileContent.kind) -}}
+  -
+{{ $fileContent | toYaml | indent 4  }}
+{{ end -}}
+{{ end }}

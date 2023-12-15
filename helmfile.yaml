@@ -22,17 +22,47 @@ releases:
     values:
       - values/crds.gotmpl
     hooks:
-      - &generate_manifests
-        events:
+      - events:
           - prepare
         command: bash
         args:
           - "-c"
           - |
-            rm -fr values/istio-manifests
-            istioctl manifest generate -f istiooperator.yaml | kubectl slice -f - -o values/istio-manifests
+            rm -fr values/istio-manifests-crds
+            istioctl manifest generate -f istiooperator.yaml | kubectl slice -f - -o values/istio-manifests-crds
+      - events:
+          - cleanup
+        command: bash
+        args:
+          - -c
+          - rm -fr values/istio-manifests-crds
 
-  - name: istio
+  - name: istio-not-revisioned-resources
+    namespace: istio-system
+    labels:
+      package-name: istio-not-revisioned-resources
+    chart: raw/raw
+    version: 2.0.0
+    condition: istio.enabled
+    values:
+      - values/not-revisioned-resources.gotmpl
+    hooks:
+      - events:
+          - prepare
+        command: bash
+        args:
+          - "-c"
+          - |
+            rm -fr values/istio-manifests-not-revisioned-resources
+            istioctl manifest generate -f istiooperator.yaml | kubectl slice -f - -o values/istio-manifests-not-revisioned-resources
+      - events:
+          - cleanup
+        command: bash
+        args:
+          - -c
+          - rm -fr values/istio-manifests-not-revisioned-resources
+
+  - name: istio-1-18-5
     namespace: istio-system
     labels:
       package-name: istio
@@ -42,13 +72,48 @@ releases:
     needs:
       - default/istio-crds
     values:
-      - values/not-crds.gotmpl
+      - values/pilot.gotmpl
     disableValidation: true
     hooks:
-      - *generate_manifests
+      - events:
+          - prepare
+        command: bash
+        args:
+          - "-c"
+          - |
+            rm -fr values/istio-manifests-pilot
+            istioctl manifest generate -f istiooperator.yaml --component Pilot | kubectl slice -f - -o values/istio-manifests-pilot
       - events:
           - cleanup
         command: bash
         args:
           - -c
-          - rm -fr values/istio-manifests
+          - rm -fr values/istio-manifests-pilot
+
+  - name: istio-ingress-gateways
+    namespace: istio-system
+    labels:
+      package-name: istio-ingress-gateways
+    chart: raw/raw
+    version: 2.0.0
+    condition: istio.enabled
+    needs:
+      - default/istio-crds
+    values:
+      - values/ingress.gotmpl
+    disableValidation: true
+    hooks:
+      - events:
+          - prepare
+        command: bash
+        args:
+          - "-c"
+          - |
+            rm -fr values/istio-manifests-ingress
+            istioctl manifest generate -f istiooperator.yaml --component IngressGateways | kubectl slice -f - -o values/istio-manifests-ingress
+      - events:
+          - cleanup
+        command: bash
+        args:
+          - -c
+          - rm -fr values/istio-manifests-ingress
