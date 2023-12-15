@@ -1,0 +1,54 @@
+environments:
+  default:
+    values:
+      - istio:
+          enabled: {{ .Values | get "istio.enabled" true }}
+---
+helmDefaults:
+  createNamespace: true
+
+repositories:
+  - name: raw
+    url: https://bedag.github.io/helm-charts/
+
+releases:
+  - name: istio-crds
+    namespace: default
+    labels:
+      package-name: istio-crds
+    chart: raw/raw
+    version: 2.0.0
+    condition: istio.enabled
+    values:
+      - values/crds.gotmpl
+    hooks:
+      - &generate_manifests
+        events:
+          - prepare
+        command: bash
+        args:
+          - "-c"
+          - |
+            rm -fr values/istio-manifests
+            istioctl manifest generate -f istiooperator.yaml | kubectl slice -f - -o values/istio-manifests
+
+  - name: istio
+    namespace: istio-system
+    labels:
+      package-name: istio
+    chart: raw/raw
+    version: 2.0.0
+    condition: istio.enabled
+    needs:
+      - default/istio-crds
+    values:
+      - values/not-crds.gotmpl
+    disableValidation: true
+    hooks:
+      - *generate_manifests
+      - events:
+          - cleanup
+        command: bash
+        args:
+          - -c
+          - rm -fr values/istio-manifests
